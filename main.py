@@ -1,67 +1,29 @@
-# # from fastapi import FastAPI
-# # from pydantic import BaseModel
-
-# # class User(BaseModel):
-# #     id: 
-
-# # from typing import Annotated
-
-# from typing import Annotated
-
-# from fastapi import FastAPI, File, UploadFile
-# from fastapi.responses import HTMLResponse
-
-# app = FastAPI()
-
-
-# @app.post("/files/")
-# async def create_files(files: Annotated[list[bytes], File()]):
-#     return {"file_sizes": [len(file) for file in files]}
-
-
-# @app.post("/uploadfiles/")
-# async def create_upload_files(files: list[UploadFile]):
-#     return {"filenames": [file.filename for file in files]}
-
-
-# @app.get("/")
-# async def main():
-#     content = """
-# <body>
-# <form action="/files/" enctype="multipart/form-data" method="post">
-# <input name="files" type="file" multiple>
-# <input type="submit">
-# </form>
-# <form action="/uploadfiles/" enctype="multipart/form-data" method="post">
-# <input name="files" type="file" multiple>
-# <input type="submit">
-# </form>
-# </body>
-#     """
-#     return HTMLResponse(content=content)
-
-
-# from fastapi import FastAPI, Depends, HTTPException, Header
-
-# app = FastAPI()
-
-# # Dependency function to get the token from headers
-# def get_current_user(abcd: str = Header(...)):
-#     if abcd != "valid-token":
-#         raise HTTPException(status_code=401, detail="Unauthorized")
-#     return {"user": "Alice"}
-
-# @app.get("/secure-data/")
-# def secure_data(user: dict = Depends(get_current_user)):
-#     return {"message": "Secure Data", "user": user}
-
-
-from fastapi import FastAPI, File, HTTPException, UploadFile, Depends
+from fastapi import FastAPI, Depends, File
+import models
+import psycopg2
 from typing import Annotated
-from models import file_model
+
 app = FastAPI()
 
+@app.post("/newUser/")
+async def create_user(user: models.User, conn : psycopg2.extensions.connection = Depends(models.get_db)):
+    # print(type(db))
+    try:
+        cursor = conn.cursor()
+        cursor.execute(
+            """INSERT INTO users (id, name, email, folders) VALUES (%s, %s, %s, %s)""",
+            (user.id, user.name, user.email, user.folders)
+        )
+        conn.commit()
+    except Exception as e:
+        print(e)
+        conn.rollback()
+    return {"db_status": "User created successfully", "user": user}
 
-@app.post("/upload/")
-async def upload_file(file: file_model):
-    return {"file_size": len(file)}
+import shutil
+@app.post("/uploadFile/")
+async def upload_file(file: models.file_model):
+    with open(file.filename, "wb") as f:
+        f.write(await file.read())
+    return {"file_status": "File uploaded successfully", "filename":"file.pdf"}
+

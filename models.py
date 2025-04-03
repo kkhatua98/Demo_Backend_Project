@@ -1,4 +1,8 @@
 from pydantic import BaseModel, Field, EmailStr, field_validator
+import tomli
+
+with open("pyproject.toml", "rb") as f:
+    config = tomli.load(f)
 
 class User(BaseModel):
     id: int = Field(..., gt = 100000, lt = 999999, description = "ID should be a 6 digit number")
@@ -18,41 +22,36 @@ class User(BaseModel):
     def push_to_db(self):
         print(f"Pushing user {self.name} to DB")
 
-from fastapi import File, Depends, HTTPException 
+from fastapi import File, Depends, HTTPException, UploadFile 
 from typing import Annotated
-def file_size_checker(file: bytes = File(...)) -> bytes:
-    if len(file) > 1024 * 1024:
+async def file_size_checker(file: UploadFile) -> UploadFile:
+    content = await file.read()
+    if len(content) > 1024 * 1024:
         raise HTTPException(status_code = 413, detail = "File size exceeds 1MB")
+    file.file.seek(0)
     return file
-file_model = Annotated[bytes, Depends(file_size_checker)]
+file_model = Annotated[UploadFile, Depends(file_size_checker)]
+
 
 import psycopg2
+from typing import Generator
 # from psycopg2 import connection
-def get_db():
+def get_db() -> Generator[psycopg2.extensions.connection, None, None]:
     try:
         connection = psycopg2.connect(
-            database = "elog_db",
-            user = "postgres",
-            password = "postgres",
-            host = "localhost",
-            port = 5432
+            database = config["database"]["database"],
+            user = config["database"]["user"],
+            password = config["database"]["password"],
+            host = config["database"]["host"],
+            port = config["database"]["port"]
         )
-        cursor = connection.cursor()
-        # print(type(connection))
-        yield cursor
+        # cursor = connection.cursor()
+        # yield cursor
+        yield connection
     finally:
-        print("Closing connection")
+        # print("Closing connection")
         connection.close()
-        # db.clear()
 
-from fastapi import FastAPI, Depends
-
-app = FastAPI()
-
-@app.get("/items/")
-def read_items(db = Depends(get_db)):
-    print(type(db))
-    return {"db_status": "connection"}
 
 # if __name__ == "__main__":
     # user = User(id = 323564, name = "ABCD", email = "abcd@abc.com")
