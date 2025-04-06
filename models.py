@@ -1,26 +1,55 @@
-from pydantic import BaseModel, Field, EmailStr, field_validator
-import tomli
+from pydantic import BaseModel, Field, EmailStr, field_validator, PrivateAttr, model_validator
+# import tomlis
+import datetime
+from passlib.context import CryptContext 
 
-with open("pyproject.toml", "rb") as f:
-    config = tomli.load(f)
+pwd_context = CryptContext(schemes = ["bcrypt"], deprecated = "auto")
+def get_password_hash(password: str) -> str:
+    return pwd_context.hash(password)
+
+# with open("pyproject.toml", "rb") as f:
+#     config = tomli.load(f)
 
 class User(BaseModel):
-    id: int = Field(..., gt = 100000, lt = 999999, description = "ID should be a 6 digit number")
-    name: str = Field(...)
-    email: str = Field(..., pattern = r"^[\w\.-]+@abc\.com$", description = "Email should be from abc.com domain")
-    folders: list[str] | None = Field(default_factory = list, description = "List of folders, the user has access to")
+    employee_id: int = Field(..., gt = 100000, lt = 999999, description = "ID should be a 6 digit number starting with 3", example = 323456)
+    username: str = Field(..., examples = ["username"])
+    email: str = Field(..., pattern = r"^[\w\.-]+@abc\.com$", description = "Email should be from abc.com domain", examples = ["username@abc.com"])
+    # folders: list[str] | None = Field(default_factory = list, description = "List of folders, the user has access to")
+    folders: list[str] | None = Field(default = ["common"], description = "List of folders, the user has access to")
+    password: str = Field(..., min_length = 8, max_length = 20, description = "Password should be at least 8 characters long")
+    confirm_password: str = Field(..., min_length = 8)
+    # time_created: str = Field(default_factory = lambda: datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"), description = "Time when the user was created")
+    # time_created: str = Field(default = None, description = "Time when the user was created")
+    _created_at: datetime.datetime = PrivateAttr(default_factory = datetime.datetime.now) 
+    _hashed_password: str = PrivateAttr(default = '')
 
-    @field_validator("id")
+
+    # def __init__(self, **data):
+    #     super().__init__(**data)
+    #     # self._created_at = "2025-04-02T12:00:00Z" 
+    #     self._created_at = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    @field_validator("employee_id")
     def validate_id(cls, value):
         if str(value)[0] != '3':
             raise ValueError("ID should start with 3")
         return value
     
+    @field_validator("confirm_password")
+    def validate_password(cls, value, values):
+        if value != values.data["password"]:
+            raise ValueError("Passwords do not match")
+        return value
+    
+    @model_validator(mode = "after")
+    def set_hashed_password(self):
+        self._hashed_password = f"hased_{self.password}"
+    
     def __str__(self):
-        return f"User(id = {self.id}, name = {self.name}, email = {self.email}, folders = {self.folders})"
+        return f"User(id = {self.employee_id}, name = {self.username}, email = {self.email}, folders = {self.folders})"
     
     def push_to_db(self):
-        print(f"Pushing user {self.name} to DB")
+        print(f"Pushing user {self.username} to DB")
 
 from fastapi import File, Depends, HTTPException, UploadFile 
 from typing import Annotated
@@ -52,9 +81,19 @@ def get_db() -> Generator[psycopg2.extensions.connection, None, None]:
         # print("Closing connection")
         connection.close()
 
+from typing import ClassVar
+class Product(BaseModel):
+    name: str 
+    price: float 
+    __MAX_PRICE : ClassVar[float] = 1000.0
 
-# if __name__ == "__main__":
+
+if __name__ == "__main__":
     # user = User(id = 323564, name = "ABCD", email = "abcd@abc.com")
     # print(user)
     # connection = get_db()
     # print(type(connection))
+    # product = Product(name = "Book", price = 10.5)
+    # print(product.name)
+    # print(product._Product__MAX_PRICE)
+    print(get_password_hash("password"))
