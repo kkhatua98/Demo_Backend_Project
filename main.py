@@ -12,22 +12,10 @@ import datetime
 app = FastAPI()
 
 @app.post("/signup/")
+# async def create_user(user: Annotated[models.User, Form()]):
 async def create_user(user: Annotated[models.User, Form()], conn : psycopg2.extensions.connection = Depends(models.get_db)):
-    # print(type(db))
-    # user.time_created = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    # user._created_at = datetime.datetime.now()
-    # print(user._created_at)
-    try:
-        print("Fetched data")
-        # cursor = conn.cursor()
-        # cursor.execute(
-        #     """INSERT INTO users (id, name, email, folders, password, time_created) VALUES (%s, %s, %s, %s)""",
-        #     (user.id, user.name, user.email, user.folders)
-        # )
-        # conn.commit()
-    except Exception as e:
-        print(e)
-        conn.rollback()
+    print(user._hashed_password)
+    user.push_to_db(conn)
     return {"db_status": "User created successfully", "user": user}
 
 import shutil
