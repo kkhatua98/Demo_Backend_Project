@@ -16,10 +16,11 @@ def get_password_hash(password: str) -> str:
 
 
 DATABASE = os.environ.get("DATABASE")
-USER = os.environ.get("USER")
-PASSWORD = os.environ.get("PASSWORD")
-HOST = os.environ.get("HOST")
-PORT = os.environ.get("PORT")
+USER = os.environ.get("POSTGRES_USER")
+PASSWORD = os.environ.get("POSTGRES_PASSWORD")
+HOST = os.environ.get("POSTGRES_HOST")
+# PORT = os.environ.get("PORT")
+PORT = 5432
 
 import psycopg2
 from typing import Generator

@@ -7,3 +7,9 @@ __pycache__/
 .env 
 
 template.yml
+app.yaml
+secrets.yaml
+secrets.yaml.template
+
+Dockerfile
+docker-compose.yml
