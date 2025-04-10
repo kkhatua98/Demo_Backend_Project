@@ -1,0 +1,9 @@
+__pycache__/
+.mypy_cache/
+
+.git/
+.gitignore
+
+.env 
+
+template.yml

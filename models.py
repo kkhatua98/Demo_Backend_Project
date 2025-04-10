@@ -1,27 +1,36 @@
 from pydantic import BaseModel, Field, EmailStr, field_validator, PrivateAttr, model_validator
-import tomli
+# import tomli
 import datetime
 from passlib.context import CryptContext 
 from fastapi import Depends, Form
 from typing import Annotated
+import os 
+from dotenv import load_dotenv
+
+# Load variables from .env into environment
+load_dotenv()
+
 pwd_context = CryptContext(schemes = ["bcrypt"], deprecated = "auto")
 def get_password_hash(password: str) -> str:
     return pwd_context.hash(password)
 
-with open("pyproject.toml", "rb") as f:
-    config = tomli.load(f)
 
+DATABASE = os.environ.get("DATABASE")
+USER = os.environ.get("USER")
+PASSWORD = os.environ.get("PASSWORD")
+HOST = os.environ.get("HOST")
+PORT = os.environ.get("PORT")
 
 import psycopg2
 from typing import Generator
 def get_db() -> Generator[psycopg2.extensions.connection, None, None]:
     try:
         connection = psycopg2.connect(
-            database = config["database"]["database"],
-            user = config["database"]["user"],
-            password = config["database"]["password"],
-            host = config["database"]["host"],
-            port = config["database"]["port"]
+            database = DATABASE,
+            user = USER,
+            password = PASSWORD,
+            host = HOST,
+            port = PORT
         )
         # cursor = connection.cursor()
         # yield cursor
@@ -86,6 +95,10 @@ async def file_size_checker(file: UploadFile) -> UploadFile:
     file.file.seek(0)
     return file
 file_model = Annotated[UploadFile, Depends(file_size_checker)]
+
+class Token(BaseModel):
+    access_token: str 
+    token_type: str
 
 
 from typing import ClassVar
