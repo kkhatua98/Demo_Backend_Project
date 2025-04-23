@@ -5,13 +5,15 @@ import datetime
 import jwt
 from datetime import timedelta, timezone
 import os
-from dotenv import load_dotenv
+# from dotenv import load_dotenv
+from typing import Annotated 
+from fastapi import Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordBearer
+import jwt 
+from jwt.exceptions import InvalidTokenError
 
 # Load variables from .env into environment
-load_dotenv()
-
-# with open("pyproject.toml", "rb") as f:
-#     config = tomli.load(f)
+# load_dotenv()
 
 # SECRET_KEY = config["jwt-secret"]["SECRET_KEY"]
 # ALGORITHM = config["jwt-secret"]["ALGORITHM"]
@@ -32,7 +34,7 @@ def check_user(username: str, password: str, conn : psycopg2.extensions.connecti
         return False
     return True
 
-def create_access_token(data: dict, expires_delta: timedelta | None = None):
+def create_access_token(data: dict, expires_delta: timedelta | None = None) -> str:
     to_encode = data.copy()
     if expires_delta:
         expire = datetime.datetime.now(timezone.utc) + expires_delta
@@ -41,6 +43,23 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None):
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
+
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="signin")
+async def verify_token(token: Annotated[str, Depends(oauth2_scheme)]):
+    print("Came here")
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        username = payload.get("sub")
+        if username is None:
+            raise credentials_exception
+    except InvalidTokenError:
+        raise credentials_exception
+    return username
 
 if __name__ == "__main__":
     with open("pyproject.toml", "rb") as f:

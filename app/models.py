@@ -6,6 +6,8 @@ from fastapi import Depends, Form
 from typing import Annotated
 import os 
 from dotenv import load_dotenv
+import boto3
+import psycopg2
 
 # Load variables from .env into environment
 load_dotenv()
@@ -14,31 +16,6 @@ pwd_context = CryptContext(schemes = ["bcrypt"], deprecated = "auto")
 def get_password_hash(password: str) -> str:
     return pwd_context.hash(password)
 
-
-DATABASE = os.environ.get("DATABASE")
-USER = os.environ.get("POSTGRES_USER")
-PASSWORD = os.environ.get("POSTGRES_PASSWORD")
-HOST = os.environ.get("POSTGRES_HOST")
-# PORT = os.environ.get("PORT")
-PORT = 5432
-
-import psycopg2
-from typing import Generator
-def get_db() -> Generator[psycopg2.extensions.connection, None, None]:
-    try:
-        connection = psycopg2.connect(
-            database = DATABASE,
-            user = USER,
-            password = PASSWORD,
-            host = HOST,
-            port = PORT
-        )
-        # cursor = connection.cursor()
-        # yield cursor
-        yield connection
-    finally:
-        # print("Closing connection")
-        connection.close()
 
 class User(BaseModel):
     employee_id: int = Form(..., gt = 100000, lt = 999999, description = "ID should be a 6 digit number starting with 3", example = ["323456"])
@@ -101,12 +78,18 @@ class Token(BaseModel):
     access_token: str 
     token_type: str
 
+AWS_ACCESS_KEY_ID = os.environ.get("AWS_ACCESS_KEY_ID")
+AWS_SECRET_ACCESS_KEY = os.environ.get("AWS_SECRET_ACCESS_KEY")
+AWS_REGION = os.environ.get("AWS_REGION")
+S3_BUCKET = os.environ.get("S3_BUCKET")
 
-from typing import ClassVar
-class Product(BaseModel):
-    name: str 
-    price: float 
-    __MAX_PRICE : ClassVar[float] = 1000.0
+s3_client = boto3.client(
+    "s3",
+    region_name=AWS_REGION,
+    aws_access_key_id=AWS_ACCESS_KEY_ID,
+    aws_secret_access_key=AWS_SECRET_ACCESS_KEY
+)
+
 
 
 if __name__ == "__main__":
